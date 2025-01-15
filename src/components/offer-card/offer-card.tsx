@@ -6,7 +6,7 @@ import { AppRoutes } from '../../constants/routers';
 interface OfferCardProps {
   offer: Offer;
   cardType?: string;
-  setOnHoverOfferId: React.Dispatch<React.SetStateAction<number | null>>;
+  setOnHoverOfferId?: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 enum ClassName {
@@ -28,13 +28,16 @@ const OfferCard: React.FC<OfferCardProps> = (props) => {
     }
   };
   const cardClassName = getClassName(cardType);
-
   const handleIsHoverOffer = () =>{
-    setOnHoverOfferId(offer.id);
+    if(setOnHoverOfferId) {
+      setOnHoverOfferId(offer.id);
+    }
   };
 
   const handleOutHoverOffer = () =>{
-    setOnHoverOfferId(null);
+    if(setOnHoverOfferId) {
+      setOnHoverOfferId(null);
+    }
   };
 
   return (
@@ -48,10 +51,10 @@ const OfferCard: React.FC<OfferCardProps> = (props) => {
         <Link to={`${AppRoutes.Offer}/:${offer.id}`}>
           <img
             className="place-card__image"
-            src={`img/${offer.img}`}
+            src={`${offer.previewImage}`}
             width={cardClassName !== ClassName.Favorite ? '260px' : '150px'}
             height={cardClassName !== ClassName.Favorite ? '200px' : '200px'}
-            alt={offer.name}
+            alt={offer.title}
           />
         </Link>
       </div>
@@ -76,7 +79,7 @@ const OfferCard: React.FC<OfferCardProps> = (props) => {
         </div>
         <h2 className="place-card__name">
           <Link to={`${AppRoutes.Offer}/:${offer.id}`}>
-            {offer.name}
+            {offer.title}
           </Link>
         </h2>
         <p className="place-card__type">{offer.type}</p>
