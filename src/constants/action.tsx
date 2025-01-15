@@ -9,5 +9,6 @@ export const Actions = {
     LOGOUT: 'LOGOUT',
     GET_COMMENTS: 'GET_COMMENTS',
     POST_COMMENT: 'POST_COMMENT',
+    CHANGE_OFFER_STATUS: 'CHANGE_OFFER_STATUS',
   };
   
