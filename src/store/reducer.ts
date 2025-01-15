@@ -1,78 +1,126 @@
-import { createReducer } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
-import { Offer } from '../types/offer';
+import { createAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { Cities } from '../constants/cities';
-import { fetchOffers, fetchFavoritesOffers, changeCity, checkAuthAction, loginAction, logoutAction } from './action';
-import { AuthorizationStatus } from '../constants/auth';
-import { UserInfo } from '../types/auth';
+import { Offer } from '../types/offer';
+import { AxiosInstance } from 'axios';
+import { Actions } from '../constants/action';
+import { Paths } from '../constants/paths';
+import { AuthData, UserInfo } from '../types/auth';
+import { dropToken, saveToken } from '../services/services';
+import { OfferInfo } from '../types/offer-info';
+import { OfferNearby } from '../types/offer-nearby';
+import { Review } from '../types/review';
+import { CommentFormValue } from '../components/comment-form/types/comment';
 
-type OffresListState = {
-  offers: Offer[];
-  favoritesOffers: Offer[];
-  city: Cities;
-  isLoading: boolean;
-  error: string | null;
-  authorizationStatus: AuthorizationStatus;
-  userInfo: UserInfo | null;
-};
+export const changeCity = createAction<Cities>(Actions.CHANGE_CITY);
 
-const initialState: OffresListState = {
-  offers: [],
-  favoritesOffers: [],
-  city: Cities.Paris,
-  isLoading: false,
-  error: null,
-  authorizationStatus: AuthorizationStatus.Unknown,
-  userInfo: null,
-};
+export const fetchOffers = createAsyncThunk<
+    Offer[],
+    Cities,
+    { extra: AxiosInstance }
+  >(
+    Actions.GET_OFFERS,
+    async (city, { extra: api }) => {
+      const response = await api.get<Offer[]>(Paths.FetchOffers);
+      return response.data.filter((offer) => offer.city.name === city.toString());
+    }
+  );
 
-export const reducer = createReducer(initialState, (builder) => {
-  builder
-    .addCase(changeCity, (state, action: PayloadAction<Cities>) => {
-      state.city = action.payload;
-    })
-    .addCase(fetchOffers.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    })
-    .addCase(fetchOffers.fulfilled, (state, action: PayloadAction<Offer[]>) => {
-      state.isLoading = false;
-      state.offers = action.payload;
-    })
-    .addCase(fetchOffers.rejected, (state, action) => {
-      state.isLoading = false;
-      state.error = action.error.message || 'Не удалось загрузить предложения';
-    })
-    .addCase(fetchFavoritesOffers.pending, (state) => {
-      state.isLoading = true;
-      state.error = null;
-    })
-    .addCase(fetchFavoritesOffers.fulfilled, (state, action: PayloadAction<Offer[]>) => {
-      state.isLoading = false;
-      state.favoritesOffers = action.payload;
-    })
-    .addCase(fetchFavoritesOffers.rejected, (state, action) => {
-      state.isLoading = false;
-      state.error = action.error.message || 'Не удалось загрузить избранные предложения';
-    })
-    .addCase(checkAuthAction.fulfilled, (state, action) => {
-      state.authorizationStatus = AuthorizationStatus.Auth;
-      state.userInfo = action.payload;
-    })
-    .addCase(checkAuthAction.rejected, (state) => {
-      state.authorizationStatus = AuthorizationStatus.NoAuth;
-      state.userInfo = null;
-    })
-    .addCase(loginAction.fulfilled, (state, action) => {
-      state.authorizationStatus = AuthorizationStatus.Auth;
-      state.userInfo = action.payload;
-    })
-    .addCase(loginAction.rejected, (state) => {
-      state.authorizationStatus = AuthorizationStatus.NoAuth;
-      state.userInfo = null;
-    })
-    .addCase(logoutAction.fulfilled, (state) => {
-      state.authorizationStatus = AuthorizationStatus.NoAuth;
-      state.userInfo = null;
-    });
-});
+export const fetchFavoritesOffers = createAsyncThunk<
+    Offer[],
+    void,
+    { extra: AxiosInstance }
+  >(
+    Actions.GET_FAVORITES_OFFERS,
+    async (_, { extra: api }) => {
+      const response = await api.get<Offer[]>(Paths.FetchFavoritesOffers);
+      return response.data.filter((offer) => offer.isFavorite);
+    }
+  );
+
+export const fetchOffer = createAsyncThunk<
+    OfferInfo,
+    string,
+    { extra: AxiosInstance }
+  >(
+    Actions.GET_OFFER,
+    async (id, { extra: api }) => {
+      const { data } = await api.get<OfferInfo>(Paths.FetchOffer.replace('{offerId}', id));
+      return data;
+    }
+  );
+
+export const fetchOffersNearby = createAsyncThunk<
+    OfferNearby[],
+    string,
+    { extra: AxiosInstance }
+  >(
+    Actions.GET_OFFERS_NEARBY,
+    async (id, { extra: api }) => {
+      const { data } = await api.get<OfferNearby[]>(Paths.FetchOfferNearby.replace('{offerId}', id));
+      return data;
+    }
+  );
+
+export const checkAuthAction = createAsyncThunk<
+    UserInfo,
+    undefined,
+    { extra: AxiosInstance }
+  >(
+    Actions.CHECK_AUTH,
+    async (_, { extra: api }) => {
+      const { data } = await api.get<UserInfo>(Paths.FetchLogin);
+      return data;
+    }
+  );
+
+export const loginAction = createAsyncThunk<
+    UserInfo,
+    AuthData,
+    { extra: AxiosInstance }
+  >(
+    Actions.LOGIN,
+    async ({ email, password }, { extra: api }) => {
+      const { data } = await api.post<UserInfo>(Paths.FetchLogin, { email, password });
+      saveToken(data.token);
+      return data;
+    }
+  );
+
+export const logoutAction = createAsyncThunk<
+    void,
+    undefined,
+    { extra: AxiosInstance }
+  >(
+    Actions.LOGOUT,
+    async (_, { extra: api }) => {
+      await api.delete(Paths.FetchLogout);
+      dropToken();
+    }
+  );
+
+export const fetchComments = createAsyncThunk<
+    Review[],
+    string,
+    { extra: AxiosInstance }
+  >(
+    Actions.GET_COMMENTS,
+    async (id, { extra: api }) => {
+      const { data } = await api.get<Review[]>(Paths.FetchComments.replace('{offerId}', id));
+      return data;
+    }
+  );
+
+export const postComment = createAsyncThunk<
+    void,
+    {
+      formValue: CommentFormValue;
+      offerId: string;
+    },
+    { extra: AxiosInstance }
+  >(
+    Actions.POST_COMMENT,
+    async ({ formValue, offerId }, { extra: api }) => {
+      await api.post(Paths.FetchComments.replace('{offerId}', offerId), formValue);
+    }
+  );
+  
