@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppRoutes } from '../../constans/routes';
+import { AppRoutes } from '../../constants/routers';
 import { Navigate } from 'react-router-dom';
 
 type PrivateRouterProps = {
